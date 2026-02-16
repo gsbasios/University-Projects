@@ -1,6 +1,3 @@
-# PAPPAS VIKTOR 5327
-# GEORGIOS MPASIOS 5050
-
 import sys
 import argparse
 from colorama import Fore, init
@@ -297,3 +294,4 @@ def main():
         
 if __name__ == "__main__":
     main()
+
