@@ -1,12 +1,6 @@
 # Basios Georgios 
 ### Offensive Security Enthusiast | CSE Student | Aspiring Penetration Tester
 
-<p align="left">
-<a href="https://github.com/gsbasios">
-  <img src="https://github-readme-stats.vercel.app/api?username=YOUR_USERNAME&show_icons=true&theme=radical&hide_border=true" alt="GitHub Stats" />
-</a>
-</p>
-
 ---
 
 ### 🛡️ About Me
