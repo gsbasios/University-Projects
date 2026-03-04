@@ -30,6 +30,6 @@ I am a Computer Science student focused on **Offensive Security**
 
 ### 📫 Connect with me
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/gsbasios/)
-[![HackTheBox](https://img.shields.io/badge/TryHackMe-212c42?style=for-the-badge&logo=tryhackme&logoColor=red)](https://profile.hackthebox.com/profile/019cbaaf-7f1f-70b4-86d1-c0b15ac051c6)
+[![HackTheBox](https://img.shields.io/badge/-HackTheBox-%239FEF00?style=for-the-badge&logo=hackthebox&logoColor=white)](https://app.hackthebox.com/users/gsbasios)
 
 ---
