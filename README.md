@@ -1,5 +1,5 @@
 # Georgios Basios
-### Offensive Security Enthusiast | CSE Student | Aspiring Penetration Tester
+### Offensive Security Enthusiast | Computer Science and Engineering Student | Aspiring Penetration Tester
 
 ---
 
@@ -22,13 +22,13 @@ I am a Computer Science student focused on **Offensive Security**
 ---
 
 ### 📁 Featured Security Projects
-* 🔍 **[Network-Scanner-Py](YOUR_LINK):** A multi-threaded reconnaissance tool for mapping internal networks.
-* 💀 **[Buffer-Overflow-Lab](YOUR_LINK):** Documenting exploitation of a vulnerable Windows binary.
-* 📝 **[CTF-Writeups](YOUR_LINK):** Detailed technical walkthroughs of machines from TryHackMe and HTB.
+* **[Network-Scanner-Py](YOUR_LINK):** A multi-threaded reconnaissance tool for mapping internal networks
+* **[Buffer-Overflow-Lab](YOUR_LINK):** Documenting exploitation of a vulnerable Windows binary
+* **[CTF-Writeups](YOUR_LINK):** Detailed technical walkthroughs of machines from Hack The Box
 
 ---
 
-### 📫 Connect with me
+### Connect with me
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/gsbasios/)
 [![HackTheBox](https://img.shields.io/badge/-HackTheBox-%239FEF00?style=for-the-badge&logo=hackthebox&logoColor=white)](https://app.hackthebox.com/users/gsbasios)
 
