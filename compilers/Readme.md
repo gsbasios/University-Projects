@@ -2,7 +2,6 @@
 
 ## SYSTEM REQUIREMENTS
 - Python 3+
-- Dependencies listed in requirements.txt
 
 ## INSTALLATION
 To install the necessary library for colored output:
