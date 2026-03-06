@@ -3,16 +3,13 @@
 ## SYSTEM REQUIREMENTS
 - Python 3+
 - Dependencies listed in requirements.txt
----
-
+- 
 ## INSTALLATION
----
 To install the necessary library for colored output:
 > python3 -m pip install -r requirements.txt
 
 ## USAGE
----
-```Run the compiler from the command line:
+```
 > python3 lex-syntax-analyzer.py <filename>.c++ [options]
 ```
 Options:
@@ -23,7 +20,6 @@ Options:
       automatically*
 
 ## TECHNICAL SPECIFICATIONS
----
 - Integers: 16-bit signed range (-32767 to 32767)
 - Identifier Limit: 30 characters (longer names are automatically trimmed)
 - Nested Functions: Supports unlimited depth
@@ -31,7 +27,6 @@ Options:
 - Error Handling: Typo-prediction and visual '^' pointer
 
 ## DEVELOPERS INFO
----
 ***Developed by:*** 	
 - BASIOS GEORGIOS
 - PAPPAS VIKTOR
