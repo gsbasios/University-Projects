@@ -1,6 +1,5 @@
-                          CASE++ COMPILER
-                  			    version 0.1
-                  		 Lex and Syntax Analyzer
+# CASE++ COMPILER
+### version 0.1 | Lex and Syntax Analyzer
 
 1. SYSTEM REQUIREMENTS
 - Python 3+
@@ -8,12 +7,12 @@
 ---
 
 2. INSTALLATION
-------------------------------------------------------------------------
+---
 To install the necessary library for colored output:
 > python3 -m pip install -r requirements.txt
 
 3. USAGE
-------------------------------------------------------------------------
+---
 Run the compiler from the command line:
 > python3 lex-syntax-analyzer.py <filename>.c++ [options]
 
