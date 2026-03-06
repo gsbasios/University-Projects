@@ -1,9 +1,3 @@
-/*
-Basios Georgios
-AM: 5050
-cs05050@uoi.gr
-*/
-
 import java.util.*;
 
 public class TwoFourTree<Key extends Comparable<Key>, Item> {
@@ -479,3 +473,4 @@ public class TwoFourTree<Key extends Comparable<Key>, Item> {
     }
     
 }
+
