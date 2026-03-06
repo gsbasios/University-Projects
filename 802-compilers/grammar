@@ -8,7 +8,7 @@ statements_sequence :   statement ( ';' statement )*
                     |	ε
                     ;
 
-declarations	      :   ( 'declare' varlist ';')*
+declarations	    :   ( 'declare' varlist ';')*
                     ;
 
 varlist             :   ID ( ',' ID )*
@@ -25,11 +25,11 @@ function            :   'function' ID formalpars
 formalpars	        : 	'(' formalparlist ')'
                     ;
 
-formalparlist	      :   formalparitem  ( ',' formalparitem )*
+formalparlist	    :   formalparitem  ( ',' formalparitem )*
                     |	ε
                     ;
 
-formalparitem	      : 	'in' ID | 'inout' ID
+formalparitem	    : 	'in' ID | 'inout' ID
                     ;
 
 statements	        :   statement
@@ -37,7 +37,7 @@ statements	        :   statement
                     ;
 
 statement           :   assignment_stat
-			              |   if_stat
+			            |   if_stat
       			        |   while_stat
       			        |   switchcase_stat
       			        |   whilecase_stat
@@ -55,7 +55,7 @@ assignment_stat     :   ID ':=' expression
 if_stat             :   'if' condition statements elsepart
                     ;
 
-elsepart	          :   'else' statements
+elsepart	        :   'else' statements
                     |	ε
                     ;
 
@@ -65,25 +65,25 @@ while_stat          :   'while' condition statements
 switchcase_stat     : 	'switchcase'
 				                ( 'when' condition ':' statements )*
 				                'default' ':' statements
-            		    ;
+            		;
 
 whilecase_stat      : 	'whilecase'
         				        ( 'when' condition ':' statements )*
         				        'default' ':' statements
-        				    ;
+        			;
 
 incase_stat         : 	'incase'
         				        ( 'when' condition ':' statements )*
-        				    ;
+        			;
 
 forcase_stat        : 	'forcase' ID '=' INTEGER
         				        ( 'when' condition ':' statements )*
-        				    ;
+        			;
 
 untilcase_stat      : 	'untilcase'
         				        ( 'when' condition ':' statements )*
         				        'until' condition
-        				    ;
+        			;
 
 print_stat	        :   'print' expression
                     ;
@@ -107,7 +107,7 @@ actualparitem       :   'in' expression |  'inout'ID
 condition           :   boolterm ( 'or' boolterm )*
                     ;
 
-boolterm	          :   boolfactor ( 'and' boolfactor )*
+boolterm	        :   boolfactor ( 'and' boolfactor )*
                     ;
 
 boolfactor          :   'not' '[' condition ']'
@@ -126,7 +126,7 @@ factor              :   INTEGER
                     |   ID idtail
                     ;
 
-idtail		          :   actualpars
+idtail		        :   actualpars
                     |	ε
                     ;
 
@@ -136,7 +136,7 @@ relational_oper     :   '=' | '<=' | '>=' | '<>' | '<'  | '>'
 add_oper            :   '+' | '-'
                     ;
 
-mul_oper	          :   '*' | '/'
+mul_oper	        :   '*' | '/'
                     ;
 
 optional_sign 	    :   add_oper
