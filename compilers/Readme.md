@@ -1,5 +1,6 @@
 # CASE++ COMPILER
 ### version 0.1 | Lex and Syntax Analyzer
+---
 
 1. SYSTEM REQUIREMENTS
 - Python 3+
