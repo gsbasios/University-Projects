@@ -1,9 +1,3 @@
-/*
-Basios Georgios
-AM: 5050
-cs05050@uoi.gr
-*/
-
 import java.util.*;
 
 public class IntervalTree {
@@ -659,4 +653,5 @@ public class IntervalTree {
         else System.out.println("- Some intervals still exist");
         System.out.println();
     }
+
 }
