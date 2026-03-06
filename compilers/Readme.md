@@ -1,4 +1,4 @@
-# CASE++ COMPILER | version 0.1 - Lex and Syntax Analyzer
+# CASE++ COMPILER - version 0.1 : Lex and Syntax Analyzer
 
 ## SYSTEM REQUIREMENTS
 - Python 3+
@@ -22,11 +22,11 @@ Options:
       automatically*
 
 ## TECHNICAL SPECIFICATIONS
-- Integers: 16-bit signed range (-32767 to 32767)
-- Identifier Limit: 30 characters (longer names are automatically trimmed)
-- Nested Functions: Supports unlimited depth
-- Nested Comments: Not allowed and will be treated as syntax error
-- Error Handling: Typo-prediction and visual '^' pointer
+- **Integers:** 16-bit signed range (-32767 to 32767)
+- **Identifier Limit:** 30 characters (longer names are automatically trimmed)
+- **Nested Functions:** Supports unlimited depth
+- **Nested Comments:** Not allowed and will be treated as syntax error
+- **Error Handling:** Typo-prediction and visual '^' pointer
 
 ## DEVELOPERS INFO
 ***Developed by:*** 	
