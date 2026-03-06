@@ -1,9 +1,3 @@
-/*
-Basios Georgios
-AM: 5050
-cs05050@uoi.gr
-*/
-
 import java.util.Scanner;
 
 public class CliMain{
@@ -289,3 +283,4 @@ public class CliMain{
         }
     }
 }
+
