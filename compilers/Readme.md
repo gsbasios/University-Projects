@@ -7,7 +7,7 @@
 ## INSTALLATION
 To install the necessary library for colored output:
 ```
-python3 -m pip install -r requirements.txt
+> python3 -m pip install colorama
 ```
 
 ## USAGE
