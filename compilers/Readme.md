@@ -11,11 +11,11 @@ To install the necessary library for colored output:
 ## USAGE
 ```
 > python3 lex-syntax-analyzer.py <filename>.c++ [options]
-```
+
 Options:
     --print-tokens          Display identifying tokens before syntax check
     --no-color              Disable colored output
-
+```
 ***Note:*** *If colorama is not installed, the program defaults to no-color mode
       automatically*
 
