@@ -37,17 +37,17 @@ statements	        :   statement
                     ;
 
 statement           :   assignment_stat
-			            |   if_stat
-      			        |   while_stat
-      			        |   switchcase_stat
-      			        |   whilecase_stat
-      			        |   incase_stat
-      			        |   forcase_stat
-      			        |   untilcase_stat
-      			        |   input_stat
-      			        |   print_stat
-      			        |   return_stat
-      			        ;
+			        |   if_stat
+      			    |   while_stat
+      		        |   switchcase_stat
+      		        |   whilecase_stat
+      		        |   incase_stat
+    			    |   forcase_stat
+      		        |   untilcase_stat
+      		        |   input_stat
+      		        |   print_stat
+			        |   return_stat
+					;
 
 assignment_stat     :   ID ':=' expression
                     ;
