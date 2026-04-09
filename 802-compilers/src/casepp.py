@@ -62,7 +62,7 @@ def report_error(error, message, line, line_number, line_pos):
     mindist = min(error_dist, line_dist)
     
     print(f"{Fore.RED}{error}: {Fore.RED}{message}")
-    print(f"{Fore.LIGHTYELLOW_EX}in line {line_number} {' '*(maxdist -1- mindist)}{line}")
+    print(f"{Fore.LIGHTYELLOW_EX}in line {line_number} {' '*(maxdist - 1 - mindist)}{line}")
     print(f"{' '*(line_pos+maxdist-1)}{Fore.RED}^")
     
     sys.exit(1)
