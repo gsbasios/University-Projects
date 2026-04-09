@@ -13,6 +13,7 @@ To install the necessary library for colored output:
 ```
 [NIX]
 > ./casepp.py <filename>.c++ [options]
+
 [WINDOWS]
 > python3 casepp.py <filename>.c++ [options]
 
