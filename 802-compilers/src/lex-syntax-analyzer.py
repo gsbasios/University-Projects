@@ -1,3 +1,4 @@
+import os
 import sys
 import difflib
 import argparse
@@ -9,18 +10,25 @@ except ImportError:
     COLORAMA_INSTALLED = False
 
 # ---------------------------------- GLOBAL VARIABLES ------------------------------------------
+
 OCCUPIED_WORDS = [
                     'program', 'declare', 'and', 'or', 'not', 'if', 'else', 'while', 
                     'switchcase', 'when', 'default', 'whilecase', 'incase', 'untilcase', 
                     'until', 'forcase', 'return', 'print', 'input', 'function', 'in', 'inout'
                  ]
 
-TOKENS = []
-lines = []
-token = None
-current_index = 0
+LINES = []                  # a list with the lines of the whole program, used to report errors
+TOKENS = []                 # list with the tokens
+token = None                # the current token 
+T_COUNTER = 0               # counter of temp variables T_i
+VAR_LIST = []               # list with all the temp variables
+QUAD_LIST = []              # list with all the quads
+FILENAME = None             # the base name of the .c++ file
+QUAD_COUNTER = 1            # counter of each quad
+CURRENT_TOKEN_INDEX = 0     # index inside TOKENS list, used to store and get token
 
 # ------------------------------------ TOKEN AND COLOR CLASSES ---------------------------------------------
+
 class NoColor:
     def __getattribute__(self, name):
         return ""
@@ -68,27 +76,29 @@ def is_valid_integer(value):
     
     
 def check_extension(infile):
+    global FILENAME
     ext = infile.split('.')[-1]
+    FILENAME = infile.rsplit('.', 1)[0]
     if ext != 'c++':
         print(f"{Fore.RED}ERROR:{Fore.RESET} Invalid file extension: {Fore.YELLOW}.{ext}{Fore.RESET} (Did you mean .c++?)")
         sys.exit(1)
         
         
 def get_token():
-    global current_index
+    global CURRENT_TOKEN_INDEX
     
-    if current_index >= len(TOKENS): return Token("EOF", "EOF", 0, 0)
+    if CURRENT_TOKEN_INDEX >= len(TOKENS): return Token("EOF", "EOF", 0, 0)
     else:
-        token = TOKENS[current_index]
-        current_index += 1
+        token = TOKENS[CURRENT_TOKEN_INDEX]
+        CURRENT_TOKEN_INDEX += 1
         return token
 
     
 def store_token():
-    global current_index
+    global CURRENT_TOKEN_INDEX
     
-    if current_index >= len(TOKENS): return Token("EOF", "EOF", 0, 0)
-    else: return TOKENS[current_index]
+    if CURRENT_TOKEN_INDEX >= len(TOKENS): return Token("EOF", "EOF", 0, 0)
+    else: return TOKENS[CURRENT_TOKEN_INDEX]
 
 
 def word_prediction(word, possibilities):
@@ -103,15 +113,15 @@ def get_line_pos(token):
     
     
 def initialize_lines(infile):
-    global lines
+    global LINES
     
     raw = infile.read().splitlines()
-    lines.append("")
+    LINES.append("")
     for line in raw:
         l = line.split("//")[0] # REMOVE THE COMMENTS FROM THE ERROR REPORTING
-        lines.append(l)
+        LINES.append(l)
             
-    lines.append("")
+    LINES.append("")
     infile.seek(0)
     
     
@@ -121,6 +131,66 @@ def initialize_colors(args_color):
     else:
         global Fore
         Fore = NoColor()
+        
+# ---------------------------- INTERMEDIATE CODE FUNCTIONS AND CLASS ------------------------------------------------
+
+class Quad:
+    def __init__(self, label, op, x, y, z):
+        self.label = str(label)
+        self.op = str(op)
+        self.x = str(x)
+        self.y = str(y)
+        self.z = str(z)
+        
+    def __str__(self):
+        pad = 1
+        if QUAD_LIST:
+            max_num = QUAD_LIST[-1].label
+            pad = len(max_num)
+            
+        return f"{self.label:<{pad}}: {self.op}, {self.x}, {self.y}, {self.z}"
+
+def newTemp():
+    global T_COUNTER, VAR_LIST
+    T_COUNTER += 1
+    temp = "T_" + str(T_COUNTER)
+    VAR_LIST.append(temp)
+    return temp
+    
+def nextQuad():
+    return QUAD_COUNTER
+
+def genQuad(op, x, y, z):
+    global QUAD_COUNTER, QUAD_LIST
+    QUAD_LIST.append(Quad(nextQuad(), op, x, y, z))
+    QUAD_COUNTER += 1
+    
+def emptyList():
+    return []
+
+def makeList(label):
+    return [label]
+
+def mergeList(list1, list2):
+    return list1 + list2
+
+def backpatch(lst, label):
+    global QUAD_LIST
+    for i in lst:
+        if QUAD_LIST[i-1].z != "_":
+            print(f"{Fore.RED}ERROR: Quad {QUAD_LIST[i]} has issues!")
+            sys.exit(1)
+        QUAD_LIST[i-1].z = str(label)
+        
+def write_int_code(QUAD_LIST):
+    outfile = f"{FILENAME}.int"
+    
+    with open(outfile, "w", encoding="utf-8") as f:
+        for q in QUAD_LIST:
+            f.write(f"{q}\n")
+            
+    full_path = os.path.abspath(outfile)
+    print(f"{Fore.GREEN}Intermediated code saved to: {full_path}")
         
 # ---------------------------- LEX ANALYZER ------------------------------------------------
 
@@ -372,8 +442,6 @@ def optional_sign():
     next_token = store_token()
     if next_token.token in "-+":
         token = get_token()    
-    
-    return 
 
 
 def mul_oper():
@@ -382,8 +450,6 @@ def mul_oper():
     next_token = store_token()
     if next_token.token in "*/":
         token = get_token()
-    
-    return
 
 
 def add_oper():
@@ -392,8 +458,6 @@ def add_oper():
     next_token = store_token()
     if next_token.token in "-+":
         token = get_token()
-    
-    return
 
 
 def relational_oper():
@@ -402,13 +466,12 @@ def relational_oper():
     next_token = store_token()
     if next_token.category == "RELATIONAL_OP":
         token = get_token()
+        return token.token
         
     else:
         error = token
         line_pos = get_line_pos(error)
-        report_error(0, f"Expected a Relational Operator after '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)    
-    
-    return
+        report_error(0, f"Expected a Relational Operator after '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)    
 
 
 def actualparitem():
@@ -417,49 +480,47 @@ def actualparitem():
     next_token = store_token()
     
     if next_token.token == "in":
-        token = get_token() # STORES 'in'
-        expression()
+        token = get_token()             # STORES 'in'
+        a = expression()                # STORE EXPRESSION RESULT TO VARIABLE FOLLOWING 'in'
+        genQuad("par", a, "CV", "_")    # GENERATE 'CV' PARAMETER QUAD
         
     elif next_token.token == "inout":
-        token = get_token() # STORES 'inout'
+        token = get_token()             # STORES 'inout'
         next_token = store_token()
         
         if next_token.category != "IDENTIFIER":
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
             
-        else: token = get_token() # STORES THE 'ID'
+        else: 
+            token = get_token()             # STORES THE 'ID'
+            b = token.token                 # STORE EXPRESSION RESULT TO VARIABLE FOLLOWING 'inout'
+            genQuad("par", b, "REF", "_")   # GENERATE 'REF' PARAMETER QUAD
     
-    # EMPTY ACTUALPARITEM
-    elif next_token.token == ')': return    
+    elif next_token.token == ')': return    # EMPTY ACTUALPARITEM
     
     else:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Expected Keywords 'in'/'inout' but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)    
-    
-    return
+        report_error(0, f"Expected Keywords 'in'/'inout' but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)    
 
 
 def actualparlist():
     global token
     
     actualparitem()
-    next_token = store_token() # SHOULD EITHER STORE ',' OR ')'
+    next_token = store_token()      # SHOULD EITHER STORE ',' OR ')'
     
     while next_token.token == ",":
-        token = get_token() # CONSUME THE ','
+        token = get_token()         # CONSUME THE ','
         actualparitem()
         next_token = store_token()
         
     if next_token.token in ["in", "inout"]:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Missing comma ',' before '{next_token.token}'", lines[error.line_counter], error.line_counter, line_pos)    
-        
-    
-    return
+        report_error(0, f"Missing comma ',' before '{next_token.token}'", LINES[error.line_counter], error.line_counter, line_pos)    
 
 
 def actualpars():
@@ -471,33 +532,42 @@ def actualpars():
     if next_token.token != ")":
         error = next_token
         line_pos = get_line_pos(token) + 1
-        report_error(0, f"Expected parenthesis ')' but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)    
+        report_error(0, f"Expected parenthesis ')' but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)    
     
     else: token = get_token()
-    
-    return
 
 
 def idtail():
     global token
     
+    token = get_token()             # STORES 'ID'
+    name = token.token              # STORE IDENTIFIER
+    
     next_token = store_token()
-    if next_token.token == "(":
-        token = get_token()
+    if next_token.token == "(":     # IF IT'S FUNCTION CALL
+        token = get_token()         # STORES '('
         next_token = store_token()
         
-        if next_token.token in ["in", "inout", ")"]:
-            actualpars()  
-            # ENTER actualpars() WITH TOKEN STORING THE '('
+        if next_token.token in ["in", "inout"]:
+            w = newTemp()                       # CREATE TEMPORARY VAR
+            actualpars()                        # ENTER actualpars() WITH TOKEN STORING THE '('
+            genQuad("par", w, "RET", "_")       # STORE FUNCTION RESULT TO TEMP VAR
+            genQuad("call", name, "_", "_")     # GENERATE FUNCTION CALL QUAD
+            return w                            # RETURN FUNCTION RESULT
+            
+        elif next_token.token == ")":           # EMPTY PARAMETER LIST
+            token = get_token()                 # CONSUME THE ')'
+            w = newTemp()                       # CREATE TEMPORARY VAR
+            genQuad("par", w, "RET", "_")       # STORE FUNCTION RESULT TO TEMP VAR
+            genQuad("call", name, "_", "_")     # GENERATE FUNCTION CALL QUAD
+            return w                            # RETURN FUNCTION RESULT
         
         else:
             error = next_token
             line_pos = get_line_pos(error) - 1
-            report_error(0, f"Expected Keywords 'in'/'inout' for parameters, or you misssed an Operator before the parenthesis '('?", lines[error.line_counter], error.line_counter, line_pos)    
+            report_error(0, f"Expected Keywords 'in'/'inout' for parameters, or you misssed an Operator before the parenthesis '('?", LINES[error.line_counter], error.line_counter, line_pos)    
 
-    
-    return
-
+    return name
 
 def factor():
     global token
@@ -507,10 +577,11 @@ def factor():
     
     if next_token.category == "INTEGER":
         token = get_token()
+        t1_place = token.token      # IF INTEGER, JUST RETURN IT 
         
     elif next_token.token == "(":
         token = get_token()
-        expression() 
+        t1_place = expression()     # STORE EXPRESSION RESULT
         next_token = store_token()
         
         if next_token.token == ")": token = get_token()
@@ -518,49 +589,57 @@ def factor():
         else:
             error = next_token
             line_pos = get_line_pos(error) - 1
-            report_error(0, f"Expected parenthesis ')' but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)      
+            report_error(0, f"Expected parenthesis ')' but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)      
     
     elif next_token.category == "IDENTIFIER": 
-        token = get_token() # STORES 'ID'
-        idtail()
+        token = store_token()   # STORES 'ID' WITHOUT CONSUMING
+        t1_place = idtail()     # STORE IDTAIL RESULT, FUNCTION RESULT OR AN IDENTIFIER
         
     else:
         error = last
         line_pos = get_line_pos(error)
-        report_error(0, f"Expected Integer, Identifier, or an Expression after '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
+        report_error(0, f"Expected Integer, Identifier, or an Expression after '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
            
-    return
+    return t1_place
 
 
 def term():
     global token
     
-    factor()
-    next_token = store_token() # STORES THE NEXT TOKEN OF 'factor'
+    t1_place = factor()                     # STORE T1 RESULT
+    next_token = store_token()              # STORES THE NEXT TOKEN OF 'factor'
     
-    while next_token.token in "*/":
+    while next_token.token in "*/":         # STORE OPERATOR ('*' OR '/')
+        op = next_token.token
         token = next_token
         mul_oper()
-        factor()
-        next_token = store_token()     
+        t2_place = factor()                 # STORE T2 RESULT
+        w = newTemp()                       # CREATE TEMPORARY VAR
+        genQuad(op, t1_place, t2_place, w)  # GENERATE TERM QUAD, STORE RESULT 
+        t1_place = w                        # TO TEMPORARY VAR
+        next_token = store_token()          # REPEAT IF MORE EXIST
     
-    return
+    return t1_place
 
 
 def expression():
     global token
     
     optional_sign()           
-    term()   
+    t1_place = term()                       # STORE T1 RESULT
     
     next_token = store_token()
     while next_token.token in "-+":
+        op = next_token.token               # STORE OPERATOR ('+' OR '-')
         token = next_token
-        add_oper()
-        term()      
-        next_token = store_token()   
+        add_oper()              
+        t2_place = term()                   # STORE T2 RESULT
+        w = newTemp()                       # CREATE TEMPORARY VAR
+        genQuad(op, t1_place, t2_place, w)  # GENERATE EXPRESSION QUAD, STORE RESULT 
+        t1_place = w                        # TO TEMPORARY VAR
+        next_token = store_token()          # REPEAT IF MORE EXIST
 
-    return
+    return t1_place
 
 
 def boolfactor():
@@ -569,87 +648,102 @@ def boolfactor():
     next_token = store_token()
     
     if next_token.token == "not":
-        token = get_token() # STORES '['
-        next_token = store_token() # SHOUDL STORE '['
+        token = get_token()                         # STORES 'not'
+        next_token = store_token()                  # SHOULD STORE '['
         
         if next_token.token == "[":
-            token = get_token() # STORES '['
+            token = get_token()                     # STORES '['
             
-            condition()
+            false_list, true_list = condition()     # IF 'not' KEYWORD, INVERT RESULTS IN TRUE/FALSE LISTS
             next_token = store_token()
             
             if next_token.token == "]": token = get_token()
             else:
                 error = store_token()
                 line_pos = get_line_pos(error)
-                report_error(0, f"Symbol ']' was expected but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)     
+                report_error(0, f"Symbol ']' was expected but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)     
             
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol '[' was expected but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)    
+            report_error(0, f"Symbol '[' was expected but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)    
         
     elif next_token.token == "[":
-        token = get_token() # STORES '['
-        condition()
+        token = get_token()                 # STORES '['
+        
+        true_list, false_list = condition() # IF NOT 'not', KEEP RESULTS AS IS
         next_token = store_token()
         
         if next_token.token == "]": token = get_token()
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol ']' was expected but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)          
+            report_error(0, f"Symbol ']' was expected but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)          
         
     else:
-        expression()
-        relational_oper()
-        expression()
+        e1_place = expression()     # STORE E1 RESULT
+        op = relational_oper()      # STORE OPERATOR
+        e2_place = expression()     # STORE E2 RESULT
         
-    
-    return
+        true_list = makeList(nextQuad())        # CREATE TRUE LIST
+        genQuad(op, e1_place, e2_place, "_")    # GENERATE BOOLFACTOR QUAD
+        
+        false_list = makeList(nextQuad())       # CREATE FALSE LIST
+        genQuad("jump", "_", "_", "_")          # GENERATE JUMP QUAD
+                                                # WILL BACKPATCH LATER
+    return true_list, false_list
 
 
 def boolterm():
     global token
     
-    next_token = store_token()
-    boolfactor()
+    true_list, false_list = boolfactor()                    # CREATE TRUE/FALSE LISTS
     
     next_token = store_token()
-    
     while next_token.token == "and":
+        backpatch(true_list, nextQuad())                    # BACKPATCH TRUE LIST
+        
         token = next_token
         next_token = get_token() # STORES 'and'
-        boolfactor()
+        
+        true_list2, false_list2 = boolfactor()              # CREATE SECOND BOOLTERM TRUE/FALSE LISTS
+                                                            # IF THEY EXIST
+        true_list = true_list2                              # BOTH BOOLFACTORS SHOULD BE TRUE
+        false_list = mergeList(false_list, false_list2)     # MERGE FALSE LISTS
+                                                            # IF ONE IS FALSE, THE RESULT IS FALSE AS WELL
         next_token = store_token()
     
-    return
+    return true_list, false_list
 
 
 def condition():
     global token
     
-    next_token = store_token()
-    boolterm()
+    true_list, false_list = boolterm()                  # CREATE TRUE/FALSE LISTS
     
     next_token = store_token()
-    
     while next_token.token == "or":
+        backpatch(false_list, nextQuad())               # BACKPATCH FALSE LIST
+        
         token = next_token
-        next_token = get_token() # STORE 'or'
-        boolterm()
+        next_token = get_token()                        # STORE 'or'
+        
+        true_list2, false_list2 = boolterm()            # CREATE SECOND BOOLTERM TRUE/FALSE LISTS
+                                                        # IF THEY EXIST
+        true_list = mergeList(true_list, true_list2)    # MERGE ALL THE TRUE LISTS
+        false_list = false_list2                        # IF SECOND IN FALSE, WE JUST CHECK THE FIRST
+
         next_token = store_token()  
 
-    return
+    return true_list, false_list
 
 
 def return_stat():
     global token
     
-    token = get_token()
-    expression()
-   
-    return
+    token = get_token()                     # STORES 'return'
+    e_place = expression()                  # STORE EXPRESSION RESULT
+    genQuad("retv", e_place, "_", "_")      # GENERATE RETURN QUAD
 
 
 def input_stat():
@@ -660,57 +754,70 @@ def input_stat():
     
     if next_token.category == "IDENTIFIER":
         token = get_token()
+        id_place = token.token                  # STORE IDENTIFIER
+        genQuad("inp", id_place, "_", "_")      # GENERATE INPUT QUAD
         
     elif next_token.token == ";":
         error = token
         line_pos = get_line_pos(error)
-        report_error(0, f"An Identifier was expected after '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
-    
-    return
+        report_error(0, f"An Identifier was expected after '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
 
 
 def print_stat():
     global token
     
-    token = get_token()
-    expression()
-    
-    return
+    token = get_token()                 # STORES 'print'
+    e_place = expression()              # STORE EXPRESSION RESULT TO E
+    genQuad("out", e_place, "_", "_")   # GENERATE PRINT QUAD
 
 
 def untilcase_stat():
     global token
     
-    token = get_token() # STORES 'untilcase'
-    next_token = store_token()
+    token = get_token()                 # STORES 'untilcase'
     
+    previous_false_list = emptyList()
+    restart_quad = nextQuad()
+    
+    next_token = store_token()
     while next_token.token == "when":
-        next_token = get_token() # STORES 'when'
+        next_token = get_token()        # STORES 'when'
         token = next_token
-        condition()
+
+        backpatch(previous_false_list, nextQuad())
+        true_list, false_list = condition()
         
         next_token = store_token()
-        
         if next_token.token == ":": token = get_token()
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol ':' was expected after '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Symbol ':' was expected after '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
+
+        backpatch(true_list, nextQuad())
 
         statements()
+        
+        genQuad("jump", "_", "_", restart_quad)
+        previous_false_list = false_list
+        
         next_token = store_token()
         
     next_token = store_token()
     if next_token.token == "until":
-        next_token = get_token() # STORES 'until'
+        next_token = get_token()        # STORES 'until'
         token = next_token
-        condition()
+        
+        backpatch(previous_false_list, nextQuad())
+        
+        until_true_list, until_false_list = condition()
+        
+        backpatch(until_false_list, restart_quad)
+        backpatch(until_true_list, nextQuad())
     else:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Keyword 'until' was expected to close untilcase after'{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
-   
-    return
+        report_error(0, f"Keyword 'until' was expected to close untilcase after'{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
 
 
 def forcase_stat():
@@ -721,6 +828,7 @@ def forcase_stat():
     
     if next_token.category == "IDENTIFIER":
         token = get_token() # STORES 'ID'
+        id = token.token
         next_token = store_token()
         
         if next_token.token == "=":
@@ -729,63 +837,77 @@ def forcase_stat():
             
             if next_token.category == "INTEGER":
                 token = get_token() # STORES 'INTEGER'
+                integer = token.token
+                genQuad(":=", integer, "_", id)
             else:
                 error = next_token
                 line_pos = get_line_pos(error)
-                report_error(0, f"Expected an Integer but got {error.category} '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)    
+                report_error(0, f"Expected an Integer but got {error.category} '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)    
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol '=' was expected but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Symbol '=' was expected but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
     else:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
+        report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
+    
+    restart_quad = nextQuad()
     
     next_token = store_token()
-    
     while next_token.token == "when":
         next_token = get_token()
         token = next_token
-        condition()
+        true_list, false_list = condition()
+        backpatch(true_list, nextQuad())
         
         next_token = store_token()
-        
         if next_token.token == ":": token = get_token()
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol ':' was expected after '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Symbol ':' was expected after '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
 
         statements()
-        next_token = store_token()
         
-    return
+        genQuad("jump", "_", "_", restart_quad)
+        backpatch(false_list, nextQuad())
+        
+        next_token = store_token()
 
 
 def incase_stat():
     global token
     
     token = get_token() # STORES 'incase'
-    next_token = store_token()
     
+    flag = newTemp()
+    restart_quad = nextQuad()
+    genQuad(":=", "0", "_", flag)
+    
+    next_token = store_token()
     while next_token.token == "when":
         next_token = get_token()
         token = next_token
-        condition()
+
+        true_list, false_list = condition()
+        backpatch(true_list, nextQuad())
         
         next_token = store_token()
-        
         if next_token.token == ":": token = get_token()
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol ':' was expected after '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Symbol ':' was expected after '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
 
         statements()
+        
+        genQuad(":=", "1", "_", flag)
+        backpatch(false_list, nextQuad())
+
         next_token = store_token()
         
-    return
+    genQuad("=", flag, "1", restart_quad)
 
 
 def whilecase_stat():
@@ -793,11 +915,16 @@ def whilecase_stat():
     
     token = get_token() # STORES 'whilecase'
     
+    previous_false_list = emptyList()
+    restart_quad = nextQuad()
+    
     next_token = store_token()
     while next_token.token == "when":
         next_token = get_token() # STORES 'when'
         token = next_token
-        condition()
+        
+        backpatch(previous_false_list, nextQuad())
+        true_list, false_list = condition()
         
         next_token = store_token()
         
@@ -805,9 +932,15 @@ def whilecase_stat():
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol ':' was expected after '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Symbol ':' was expected after '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
 
+        backpatch(true_list, nextQuad())
+        
         statements()
+        
+        genQuad("jump", "_", "_", restart_quad)
+        previous_false_list = false_list
+        
         next_token = store_token()
         
     if next_token.token == "default":
@@ -818,20 +951,22 @@ def whilecase_stat():
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol ':' was expected but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Symbol ':' was expected but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
         
+        backpatch(previous_false_list, nextQuad())
         statements()
         
     else:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Keyword 'default' was expected to close whilecase after'{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)        
-    
-    return
+        report_error(0, f"Keyword 'default' was expected to close whilecase after'{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)        
 
 
 def switchcase_stat():
     global token
+    
+    exit_list = emptyList()             # HOLDS QUADS THAT JUMP OUTSIDE SWITCHCASE
+    previous_false_list = emptyList()   # STORES EACH STEP'S PREVIOUS FALSE LIST
     
     token = get_token() # STORES 'switchcase'
     next_token = store_token()
@@ -839,7 +974,9 @@ def switchcase_stat():
     while next_token.token == "when":
         next_token = get_token() # STORES 'when'
         token = next_token
-        condition()
+        
+        backpatch(previous_false_list, nextQuad())      # IF PREVIOUS CONDITION FAILED, JUMP HERE
+        true_list, false_list = condition()             # STORE CONDITION'S RESULTS
         
         next_token = store_token()
         
@@ -847,9 +984,17 @@ def switchcase_stat():
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol ':' was expected after '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Symbol ':' was expected after '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
 
-        statements()
+        backpatch(true_list, nextQuad())            # IF TRUE CONDITION, JUMP HERE AND
+        statements()                                # EXECUTE IT'S STATEMENTS
+        
+        e_quad = makeList(nextQuad())               # CREATE THE EXIT QUAD
+        genQuad("jump", "_", "_", "_")              # AND GENERATE JUMP
+
+        exit_list = mergeList(exit_list, e_quad)    # ADD THIS EXIT QUAD TO EXIT LIST
+        previous_false_list = false_list            # MAKE THIS FALSE LIST THE PREVIOUS, FOR NEXT LOOP
+        
         next_token = store_token()
         
     token = next_token
@@ -863,26 +1008,32 @@ def switchcase_stat():
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol ':' was expected but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Symbol ':' was expected but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
         
-        statements()
+        backpatch(previous_false_list, nextQuad())  # THE LAST FALSE CONDITION WILL JUMP HERE
+        statements()                                # AND EXECUTE STATEMENTS OF DEFAULT
         
     else:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Keyword 'default' was expected to close switchcase after '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
-    
-    return
+        report_error(0, f"Keyword 'default' was expected to close switchcase after '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
+
+    backpatch(exit_list, nextQuad())    # BACKPATCH EXIT LIST TO JUMP OUTSIDE SWITCHCASE
 
 
 def while_stat():
     global token
     
     token = get_token() # STORES 'while'
-    condition()
+    
+    b_quad = nextQuad()                     # STORE STARTING LABEL
+    true_list, false_list = condition()     # CREATE TRUE/FALSE LISTS
+    backpatch(true_list, nextQuad())        # BACKPATCH TRUE LIST
+    
     statements()
     
-    return
+    genQuad("jump", "_", "_", b_quad)       # JUMP TO THE STARTING POSITION TO REEVALUATE
+    backpatch(false_list, nextQuad())       # BACKPATCH FALSE LIST
 
 
 def elsepart():
@@ -890,34 +1041,41 @@ def elsepart():
     
     token = get_token() # STORES 'else'
     statements()
-    
-    return
 
 
 def if_stat():
     global token
     
-    token = get_token() # STORES 'if'
-    condition()
+    token = get_token()                     # STORES 'if'
+    
+    true_list, false_list = condition()     # STORE TRUE/FALSE LISTS
+    backpatch(true_list, nextQuad())        # BACKPATCH TRUE LIST
+    
     statements()
     
     next_token = store_token()
-    
     if next_token.token == "else":
-        elsepart()
+        if_list = makeList(nextQuad())      # IF ELSEPART EXISTS
+        genQuad("jump", "_", "_", "_")      # CREATE AND BACKPATCH THE FALSE LIST
+        backpatch(false_list, nextQuad())
         
-    return
+        elsepart()
+        backpatch(if_list, nextQuad())      # BACKPATCH AFTER ELSEPART
+    else:
+        backpatch(false_list, nextQuad())   # IF NO ELSEPART EXISTS, JUST BACKPATCH THE FALSE LIST                                            
 
 
 def assignment_stat():
     global token
     
     token = get_token() # STORES ID
+    assign_var = token.token                        # STORE THE VAR WHERE RESULT WILL BE STORED
     next_token = store_token()
     
     if next_token.token == ":=":
         token = get_token()
-        expression()
+        e_place = expression()                      # STORE EXPRESSSION RESULT
+        genQuad(":=", e_place, "_", assign_var)     # AND CREATE THE ASSIGNMENT QUAD
         
     else:
         error = token
@@ -927,11 +1085,9 @@ def assignment_stat():
         next = word_prediction(error.token, KEYWORDS)
 
         if next:
-            report_error(0, f"Unexpected word '{error.token}' came up. Did you mean '{next}'?", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Unexpected word '{error.token}' came up. Did you mean '{next}'?", LINES[error.line_counter], error.line_counter, line_pos)
         else:    
-            report_error(0, f"Expected Symbol ':=' after '{error.token}' but got '{next_token.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
-
-    return
+            report_error(0, f"Expected Symbol ':=' after '{error.token}' but got '{next_token.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
 
 
 def statement():
@@ -986,14 +1142,12 @@ def statement():
         elif next_token.category == "KEYWORD":
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Unexpected Keyword '{error.token}' came up where a statement expected!", lines[error.line_counter], error.line_counter, line_pos)           
+            report_error(0, f"Unexpected Keyword '{error.token}' came up where a statement expected!", LINES[error.line_counter], error.line_counter, line_pos)           
         
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Expected a statement but got '{error.token}'! Maybe you missed a bracket '['/']'?", lines[error.line_counter], error.line_counter, line_pos)    
-    
-    return
+            report_error(0, f"Expected a statement but got '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)    
 
 
 def statements_sequence():
@@ -1016,9 +1170,7 @@ def statements_sequence():
     if token.token not in ["}", "EOF", "default", "until", "when", "else"]:
         error = token
         line_pos = get_line_pos(error) - len(error.token) + 1
-        report_error(0, f"You missed ';' before '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
-        
-    return
+        report_error(0, f"You missed ';' before '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
 
 
 def statements():
@@ -1037,11 +1189,9 @@ def statements():
         else:
             error = token
             line_pos = get_line_pos(error) - len(error.token) + 1
-            report_error(0, f"Symbol '}}' was expected before '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)    
+            report_error(0, f"Symbol '}}' was expected before '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)    
     
     else: statement()
-    
-    return
 
 
 def formalparitem():
@@ -1059,7 +1209,7 @@ def formalparitem():
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
     
     # EMPTY FORMALPARITEMS
     elif next_token.token == ')': return    
@@ -1067,9 +1217,7 @@ def formalparitem():
     else:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Expected Keywords 'in'/'inout' but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)    
-    
-    return
+        report_error(0, f"Expected Keywords 'in'/'inout' but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)    
 
 
 def formalparlist():
@@ -1086,7 +1234,7 @@ def formalparlist():
     if next_token.token in ["in", "inout"]:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Missing comma ',' before '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
+        report_error(0, f"Missing comma ',' before '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
      
     # EXITS WHILE WITH STORED THE LAST ELEM BEFORE ')'       
     while next_token.token == ",":
@@ -1097,9 +1245,7 @@ def formalparlist():
         if next_token.token in ["in", "inout"]:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Missing comma ',' before '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
-        
-    return
+            report_error(0, f"Missing comma ',' before '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
 
 
 def formalpars():
@@ -1117,14 +1263,12 @@ def formalpars():
         else:
             token = next_token
             line_pos = get_line_pos(token)
-            report_error(0, f"Expected parenthesis ')' but got '{token.token}' instead!", lines[token.line_counter], token.line_counter, line_pos)
+            report_error(0, f"Expected parenthesis ')' but got '{token.token}' instead!", LINES[token.line_counter], token.line_counter, line_pos)
     
     else:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Expected parenthesis '(' but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
-    
-    return
+        report_error(0, f"Expected parenthesis '(' but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
 
 
 def function():
@@ -1135,15 +1279,14 @@ def function():
     next_token = store_token()
     if next_token.category == "IDENTIFIER":
         token = get_token() # STORES 'ID'
+        func_name = token.token
         formalpars()
-        programblock()
+        programblock(func_name, is_main=False)
         
     else:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
-    
-    return
+        report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
 
 
 def functions():
@@ -1155,8 +1298,6 @@ def functions():
         token = next_token
         function() # CALLS function() WITHOUT STORING 'function'
         next_token = store_token()
-
-    return
 
 
 def varlist():
@@ -1171,7 +1312,7 @@ def varlist():
         if next_token.category == "IDENTIFIER":
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Missing comma ',' before '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Missing comma ',' before '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
             
         while store_token().token == ",":
             next_token = get_token()
@@ -1186,21 +1327,19 @@ def varlist():
                 if next_token.category == "IDENTIFIER":
                     error = next_token
                     line_pos = get_line_pos(error)
-                    report_error(0, f"Missing comma ',' before '{error.token}'!", lines[error.line_counter], error.line_counter, line_pos)
+                    report_error(0, f"Missing comma ',' before '{error.token}'!", LINES[error.line_counter], error.line_counter, line_pos)
                     
             else:
                 error = next_token
                 line_pos = get_line_pos(error)
-                report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
+                report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
         
     elif next_token.token == ";": return
     
     else:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
-        
-    return
+        report_error(0, f"Expected an Identifier but got {error.category} '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
 
 
 def declarations():
@@ -1211,83 +1350,80 @@ def declarations():
         next_token = get_token() # STORES 'declare'
         token = next_token
         varlist()
-        
 
         next_token = store_token()
         if next_token.token == ";": token = get_token()
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Missing ';' after '{error.token}'", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Missing ';' after '{error.token}'", LINES[error.line_counter], error.line_counter, line_pos)
         
-        next_token = store_token()
-    
-    return 
+        next_token = store_token() 
 
 
-def programblock():
+def programblock(name, is_main):
     global token
     
-    next_token = store_token() # SHOULD STORE '{'
+    next_token = store_token()      # SHOULD STORE '{'
     if next_token.token == "{":
-        token = get_token() # STORES '{'
-        declarations()
-        functions()
+        token = get_token()         # STORES '{'
+        declarations()              # CHECK DECLARATIONS
+        functions()                 # CHECK FUNCTIONS
+        genQuad("begin_block", name, "_", "_")      # GENERATE BLOCK BEGIN QUAD
         statements_sequence()
+        if is_main:                                 # ONLY 'halt' IF MAIN PROGRAM CALLED
+            genQuad("halt", "_", "_", "_")          # GENERATE HALT QUAD
+        genQuad("end_block", name, "_", "_")        # GENERATE BLOCK END QUAD
         
-        next_token = store_token() # SHOULD STORE '}'
+        next_token = store_token()                  # SHOULD STORE '}'
         
         if next_token.token == "}": token = get_token()
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Symbol '}}' was expected but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)        
+            report_error(0, f"Symbol '}}' was expected but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)        
 
     else:
         error = next_token
         line_pos = get_line_pos(error)
-        report_error(0, f"Symbol '{{' was expected but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)        
-    
-    return 
+        report_error(0, f"Symbol '{{' was expected but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)        
 
 
 def program():
     global token
     
-    token = get_token() # SHOULD STORE 'program'
+    token = get_token()             # SHOULD STORE 'program'
     if token.token == "program":
         
-        next_token = store_token() # SHOULD STORE 'ID'
+        next_token = store_token()                  # SHOULD STORE 'ID'
         if next_token.category == "IDENTIFIER":
-            token = get_token() # STORES 'ID'
-            programblock()
+            token = get_token()                     # STORES 'ID'
+            prog_name = token.token                 # STORE PROGRAM'S NAME
+            programblock(prog_name, is_main=True)   # PASS IT TO PROGRAM BLOCK
             
         else:
             error = next_token
             line_pos = get_line_pos(error)
-            report_error(0, f"Program name was expected but got {error.category} '{error.token}' instead! Only Identifier are acceptable!", lines[error.line_counter], error.line_counter, line_pos)
+            report_error(0, f"Program name was expected but got {error.category} '{error.token}' instead! Only Identifier are acceptable!", LINES[error.line_counter], error.line_counter, line_pos)
     else:
         error = token
         line_pos = get_line_pos(error)
-        report_error(0, f"Keyword 'program' was expected but got '{error.token}' instead!", lines[error.line_counter], error.line_counter, line_pos)
-    
-    return
+        report_error(0, f"Keyword 'program' was expected but got '{error.token}' instead!", LINES[error.line_counter], error.line_counter, line_pos)
 
 
 def syntax_analyzer():
     global token
-    global current_index
+    global CURRENT_TOKEN_INDEX
     
-    current_index = 0
+    CURRENT_TOKEN_INDEX = 0
 
     program()
     
     if store_token().token != "EOF":
         error_token = store_token()
-        report_error(0, "Unexpected tokens found after the end of the program!", lines[-1], error_token.line_counter, error_token.line_pos)
+        report_error(0, "Unexpected tokens found after the end of the program!", LINES[-1], error_token.line_counter, error_token.line_pos)
 
-
-    print(f"{Fore.GREEN}Compilation was successful!")
+    #print(f"{Fore.GREEN}Compilation was successful!")
     
 # ---------------------------------------- MAIN ------------------------------------------------ 
 
@@ -1320,6 +1456,9 @@ def main():
 
             # RUN SYNTAX_ANALYZER
             syntax_analyzer()
+
+            # WRITE INT CODE TO FILE
+            write_int_code(QUAD_LIST)
                 
             sys.exit(0)
 
