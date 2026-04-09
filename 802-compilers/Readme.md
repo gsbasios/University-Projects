@@ -11,7 +11,10 @@ To install the necessary library for colored output:
 
 ## USAGE
 ```
-> python3 lex-syntax-analyzer.py <filename>.c++ [options]
+[NIX]
+> ./casepp.py <filename>.c++ [options]
+[WINDOWS]
+> python3 casepp.py <filename>.c++ [options]
 
 Options:
     --print-tokens          Display identifying tokens before syntax check
