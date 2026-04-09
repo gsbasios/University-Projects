@@ -1,4 +1,4 @@
-# CASE++ COMPILER - version 0.1 : Lex and Syntax Analyzer
+# CASE++ COMPILER - version 1.0 : Intermediate Code
 
 ## SYSTEM REQUIREMENTS
 - Python 3+
@@ -26,6 +26,7 @@ Options:
 - **Nested Functions:** Supports unlimited depth
 - **Nested Comments:** Not allowed and will be treated as syntax error
 - **Error Handling:** Typo-prediction and visual '^' pointer
+- **Output:** Compiler creates a .int file in current directory, containing the intermediate code
 
 ## DEVELOPERS INFO
 ***Developed by:*** 	
