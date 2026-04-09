@@ -101,7 +101,8 @@ actualparlist       :   actualparitem ( ',' actualparitem )*
                     |	ε
                     ;
 
-actualparitem       :   'in' expression |  'inout'ID
+actualparitem       :   'in' expression 
+					|  	'inout'ID
                     ;
 
 condition           :   boolterm ( 'or' boolterm )*
